@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Professional Login/Signup</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            width: 400px;
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        input {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .error {
+            color: red;
+            font-size: 14px;
+            margin-top: -10px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="form-container">
+        <h2>Login</h2>
+        <div id="login-error" class="error"></div>
+        <input type="text" id="username" placeholder="Username" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <button onclick="login()">Login</button>
+        <p style="text-align: center;">or</p>
+        <button onclick="showSignup()">Sign up</button>
+    </div>
+
+    <script>
+        const backendUrl = 'http://127.0.0.1:5000'; // Define your backend URL
+    
+        function login() {
+            console.log("Entered Login function")
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('login-error');
+    
+            if (username === '' || password === '') {
+                errorDiv.textContent = 'Please fill in all fields.';
+            } else {
+                errorDiv.textContent = '';
+                
+                // Make a request to the backend
+                fetch(`${backendUrl}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data); 
+                    if (data.message === 'Login successful') {
+                        localStorage.setItem('token', data.token);
+                        localStorage.setItem('username', username);
+                        window.location.href = 'menu.html';// Redirect to your desired page
+                    } else {
+                        errorDiv.textContent = data.message || 'Login failed';
+                    }
+                })
+                .catch(error => {
+                    errorDiv.textContent = 'An error occurred';
+                    console.error(error);
+                });
+            }
+        }
+
+        function signup() {
+            const newUsername = document.getElementById('new-username').value;
+            const newPassword = document.getElementById('new-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            const errorDiv = document.getElementById('signup-error');
+    
+            if (newUsername === '' || newPassword === '' || confirmPassword === '') {
+                errorDiv.textContent = 'Please fill in all fields.';
+            } else if (newPassword !== confirmPassword) {
+                errorDiv.textContent = 'Passwords do not match!';
+            } else {
+                errorDiv.textContent = '';
+    
+                // Make a request to the backend
+                fetch(`${backendUrl}/auth/signup`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username: newUsername, password: newPassword })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message === 'User created') {
+                        alert('Signup successful');
+                        showLogin();
+                    } else {
+                        errorDiv.textContent = data.message || 'Signup failed';
+                    }
+                })
+                .catch(error => {
+                    errorDiv.textContent = 'An error occurred';
+                    console.error(error);
+                });
+            }
+        }
+    
+        function showSignup() {
+            document.getElementById('form-container').innerHTML = `
+                <h2>Sign up</h2>
+                <div id="signup-error" class="error"></div>
+                <input type="text" id="new-username" placeholder="Username" required>
+                <input type="password" id="new-password" placeholder="Password" required>
+                <input type="password" id="confirm-password" placeholder="Confirm Password" required>
+                <button onclick="signup()">Sign up</button>
+                <p style="text-align: center;"> or </p>
+                <button onclick="showLogin()">Login</button>  
+            `;
+        }
+    
+        function showLogin() {
+            document.getElementById('form-container').innerHTML = `
+                <h2>Login</h2>
+                <div id="login-error" class="error"></div>
+                <input type="text" id="username" placeholder="Username" required>
+                <input type="password" id="password" placeholder="Password" required>
+                <button onclick="login()">Login</button>
+                <p style="text-align: center;">or</p>
+                <button onclick="showSignup()">Sign up</button>
+            `;
+        }
+    </script>
+    
+</body>
+</html>
