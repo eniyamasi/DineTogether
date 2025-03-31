@@ -11,7 +11,7 @@ const app = express();
 // // Middleware
 // app.use(bodyParser.json());
 app.use(express.json());  // ✅ This enables JSON parsing
-const allowedOrigins = ['http://127.0.0.1:5500', 'http://localhost:3000'];
+const allowedOrigins = ['http://127.0.0.1:5500', 'http://localhost:3000','http://127.0.0.1:5501'];
 
 app.use(cors({
     origin: function (origin, callback) {

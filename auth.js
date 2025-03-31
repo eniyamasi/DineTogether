@@ -80,37 +80,82 @@ const authenticateToken = (req, res, next) => {
       next();
   });
 };
-router.post('/place-order',authenticateToken, async (req, res) => {
-  const { cart, total } = req.body;
-  const userId = req.user.userId;
-  console.log("Received order request:", req.body); // Log incoming order data
-  
-  try {
-    const user = await User.findById(userId);
-    if(!user){
-      return res.status(404).json({message: 'user not found'});
+  router.post('/place-order',authenticateToken, async (req, res) => {
+    const { cart, total,referrerId } = req.body;
+    // const userId = req.user.userId;
+    const userId = req.user.userId;
+    if(referrerId){
+      console.log(referrerId);
+      userId = referrerId;
     }
-    // Create a new order document using the Order model
-    const newOrder = await Order.create({
-      username: user.username,
-      items: cart,  // Assumes cart is an array of item objects like [{ item: "Burger", quantity: 2, price: 5 }]
-      totalAmount: total,
-      orderDate: new Date(),
-    });
+    
+    // const userId = referrerId;
+    console.log("Received order request:", req.body); // Log incoming order data
+    
+    try {
+      const user = await User.findById(userId);
+      if(!user){
+        return res.status(404).json({message: 'user not found'});
+      }
+      // Create a new order document using the Order model
+      const newOrder = await Order.create({
+        username: user.username,
+        items: cart,  // Assumes cart is an array of item objects like [{ item: "Burger", quantity: 2, price: 5 }]
+        totalAmount: total,
+        orderDate: new Date(),
+      });
 
-    console.log("Order placed successfully:", newOrder);
+      console.log("Order placed successfully:", newOrder);
 
-    // Send the success response
-    res.status(200).json({
-      success: true,
-      message: 'Order placed successfully!',
-      orderId: newOrder._id,
-    });
+      // Send the success response
+      res.status(200).json({
+        success: true,
+        message: 'Order placed successfully!',
+        orderId: newOrder._id,
+      });
+    } catch (error) {
+      console.error("Error placing order:", error);
+      res.status(500).json({ success: false, message: 'Failed to place order.' });
+    }
+  });
+router.post('/update-cart', authenticateToken, async (req, res) => {
+  console.log("Entered update cart");
+  const { referrerId, item } = req.body;
+
+  if (!referrerId || !item) {
+      return res.status(400).json({ success: false, message: "Missing referrerId or item" });
+  }
+
+  try {
+      const user1 = await User.findOne({username: referrerId});
+      const user2 = await User.findOne({username: req.user.username});
+      if(user2){
+        console.log("user2 is present");
+      }
+      if(user1){
+        console.log("user1 is present");
+      }
+      if (!user1||!user2) {
+          return res.status(404).json({ success: false, message: "User not found." });
+      }
+      if (!user1.items) {
+        user1.items = [];
+      }
+      if (!user2.items) {
+        user2.items = [];
+      }
+      // console.log("user1's cart",user1.username);
+      user1.items.push({ name: item.name, price: item.price, addedBy: user2.username });
+      user2.items.push({ name: item.name, price: item.price, addedBy: user2.username });
+      await user1.save();
+      await user2.save();
+      res.json({ success: true, message: "Item added to referrer’s cart." });
   } catch (error) {
-    console.error("Error placing order:", error);
-    res.status(500).json({ success: false, message: 'Failed to place order.' });
+      console.error("Error updating sender's cart:", error);
+      res.status(500).json({ success: false, message: "Server error." });
   }
 });
+
 // Update status (Preparation or Received)
 app.use(express.json()); // Add this line in your server setup before your routes
 
