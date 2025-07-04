@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
 const User = require('C:\\Users\\eniya\\OneDrive\\Desktop\\rishabs\\user.js');
+const SharedCart = require('./sharedCart.js');
 const cors = require('cors'); // Import CORS
 
 const app = express();
@@ -153,6 +154,185 @@ router.post('/update-cart', authenticateToken, async (req, res) => {
   } catch (error) {
       console.error("Error updating sender's cart:", error);
       res.status(500).json({ success: false, message: "Server error." });
+  }
+});
+
+// Create shared cart
+router.post('/create-shared-cart', authenticateToken, async (req, res) => {
+  try {
+    const { items } = req.body;
+    const userId = req.user.userId;
+    const username = req.user.username;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    // Create new shared cart
+    const sharedCart = new SharedCart({
+      ownerId: userId,
+      ownerUsername: username,
+      items: items.map(item => ({
+        name: item.name,
+        price: item.price,
+        addedBy: username
+      }))
+    });
+
+    await sharedCart.save();
+
+    // Generate shareable link
+    const shareUrl = `${req.headers.origin || 'http://localhost:5500'}/menu.html?cartId=${sharedCart.cartId}`;
+
+    res.json({
+      success: true,
+      cartId: sharedCart.cartId,
+      shareUrl: shareUrl,
+      message: "Shared cart created successfully!"
+    });
+  } catch (error) {
+    console.error("Error creating shared cart:", error);
+    res.status(500).json({ success: false, message: "Server error." });
+  }
+});
+
+// Get shared cart details
+router.get('/shared-cart/:cartId', async (req, res) => {
+  try {
+    const { cartId } = req.params;
+    
+    const sharedCart = await SharedCart.findOne({ cartId, isActive: true });
+    if (!sharedCart) {
+      return res.status(404).json({ success: false, message: "Shared cart not found or expired." });
+    }
+
+    res.json({
+      success: true,
+      cart: {
+        cartId: sharedCart.cartId,
+        ownerUsername: sharedCart.ownerUsername,
+        items: sharedCart.items,
+        totalAmount: sharedCart.totalAmount,
+        createdAt: sharedCart.createdAt
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching shared cart:", error);
+    res.status(500).json({ success: false, message: "Server error." });
+  }
+});
+
+// Add item to shared cart
+router.post('/add-to-shared-cart', authenticateToken, async (req, res) => {
+  try {
+    const { cartId, item } = req.body;
+    const username = req.user.username;
+
+    if (!cartId || !item) {
+      return res.status(400).json({ success: false, message: "Missing cartId or item." });
+    }
+
+    const sharedCart = await SharedCart.findOne({ cartId, isActive: true });
+    if (!sharedCart) {
+      return res.status(404).json({ success: false, message: "Shared cart not found or expired." });
+    }
+
+    // Add item to shared cart
+    sharedCart.items.push({
+      name: item.name,
+      price: item.price,
+      addedBy: username
+    });
+
+    await sharedCart.save();
+
+    // Emit real-time update to cart owner and other users
+    if (global.io) {
+      global.io.emit(`sharedCart-${cartId}`, {
+        type: 'itemAdded',
+        item: {
+          name: item.name,
+          price: item.price,
+          addedBy: username
+        },
+        totalAmount: sharedCart.totalAmount
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Item added to shared cart!",
+      totalAmount: sharedCart.totalAmount
+    });
+  } catch (error) {
+    console.error("Error adding item to shared cart:", error);
+    res.status(500).json({ success: false, message: "Server error." });
+  }
+});
+
+// Checkout shared cart (only owner can checkout)
+router.post('/checkout-shared-cart', authenticateToken, async (req, res) => {
+  try {
+    const { cartId } = req.body;
+    const userId = req.user.userId;
+    const username = req.user.username;
+
+    if (!cartId) {
+      return res.status(400).json({ success: false, message: "Missing cartId." });
+    }
+
+    const sharedCart = await SharedCart.findOne({ cartId, isActive: true });
+    if (!sharedCart) {
+      return res.status(404).json({ success: false, message: "Shared cart not found or expired." });
+    }
+
+    // Check if the user is the owner of the cart
+    if (sharedCart.ownerId.toString() !== userId) {
+      return res.status(403).json({ 
+        success: false, 
+        message: "Only the cart owner can checkout. You can only add items to this shared cart." 
+      });
+    }
+
+    if (sharedCart.items.length === 0) {
+      return res.status(400).json({ success: false, message: "Cart is empty." });
+    }
+
+    // Create order from shared cart
+    const Order = require('./order.js');
+    const newOrder = await Order.create({
+      username: username,
+      items: sharedCart.items.map(item => ({
+        name: item.name,
+        price: item.price
+      })),
+      totalAmount: sharedCart.totalAmount,
+      orderDate: new Date(),
+    });
+
+    // Mark shared cart as inactive
+    sharedCart.isActive = false;
+    await sharedCart.save();
+
+    // Emit checkout notification
+    if (global.io) {
+      global.io.emit(`sharedCart-${cartId}`, {
+        type: 'cartCheckedOut',
+        orderId: newOrder._id,
+        message: 'Cart has been checked out successfully!'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Order placed successfully!",
+      orderId: newOrder._id,
+      totalAmount: sharedCart.totalAmount
+    });
+  } catch (error) {
+    console.error("Error checking out shared cart:", error);
+    res.status(500).json({ success: false, message: "Server error." });
   }
 });
 
