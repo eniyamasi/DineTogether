@@ -6,7 +6,7 @@ const bodyParser = require('body-parser');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
-const authRoutes = require('C:\\Users\\eniya\\OneDrive\\Desktop\\rishabs\\auth.js');
+const authRoutes = require('./auth.js');
 
 const app = express();
 const server = http.createServer(app);
