@@ -99,6 +99,7 @@
                 errorDiv.textContent = '';
                 
                 // Make a request to the backend
+                console.log("Sending:", { username, password });
                 fetch(`${backendUrl}/auth/login`, {
                     method: 'POST',
                     headers: {
@@ -145,7 +146,7 @@
                 errorDiv.textContent = '';
     
                 // Make a request to the backend
-                fetch(`${backendUrl}/auth/signup`, {
+                fetch(`C:/DineTogether/auth.js/signup`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

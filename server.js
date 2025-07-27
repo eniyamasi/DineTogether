@@ -3,7 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const authRoutes = require('C:\\Users\\eniya\\OneDrive\\Desktop\\rishabs\\auth.js');
+const authRoutes = require('./auth.js');
 
 const app = express();
 // app.use(cors({ origin: 'http://127.0.0.1:5500',methods: 'GET,POST,PUT,DELETE',

@@ -1,7 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
-const User = require('C:\\Users\\eniya\\OneDrive\\Desktop\\rishabs\\user.js');
+const User = require('./user.js');
 const cors = require('cors'); // Import CORS
 
 const app = express();
